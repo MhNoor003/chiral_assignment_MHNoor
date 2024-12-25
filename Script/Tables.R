@@ -141,5 +141,12 @@ Factor |>
   as_gt() |> 
   gtsave("Tables/Factors contributing to antibiotic misuse among parents of school-going children in Dhaka City, Bangladesh.docx")
 
-
+#Table-4
+data1 |> 
+  mutate(Factor = Factor)
+data1 |> select(1:9,Factor) |> 
+  tbl_uvregression(
+    method = lm , 
+    y = Factor
+  )
 
