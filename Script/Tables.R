@@ -16,66 +16,130 @@ data1 |>
   gtsave("Tables/table2.docx")
 
 #data-table-3
-#knowledge
 library(dplyr)
-
+# Modify the 'knowledge' dataframe
 knowledge <- data1 |> 
   select(12:23) |> 
-  mutate(across(everything(), ~ case_when(
-    . == "No" ~ 0,
-    . == "Don't Know" ~ 0,
-    . == "Yes" ~ 1,
-    TRUE ~ NA_real_
-  ))) |>  
-  # Compute the median of each column, and store it in knowledge_M
-  mutate(knowledge_M = apply(across(everything()), 1, function(x) median(x, na.rm = TRUE)) * 100) |> 
-  mutate(knowledge_M = paste0(knowledge_M, "%"),
-         knowledge_Level = case_when(
-           knowledge_M >= 80 ~ "Good",     
-           knowledge_M >= 50 & knowledge_M < 80 ~ "Moderate", 
-           knowledge_M < 50 ~ "Poor",      
-           TRUE ~ "Unknown"               
-         ))
+  mutate(
+    # Apply transformation to specified columns (1, 2, 3, 6, 8, 9, 10, 11, 12)
+    across(c(1, 2, 3, 6, 8, 9, 10, 11, 12), ~ case_when(
+      . == "No" ~ 0,
+      . == "Don't Know" ~ 0,
+      . == "Yes" ~ 1,
+      TRUE ~ TRUE  # Replace missing with TRUE
+    )),
+    
+    # Apply transformation to columns (4, 5, 7)
+    across(c(4, 5, 7), ~ case_when(
+      . == "No" ~ 1,
+      . == "Don't Know" ~ 0,
+      . == "Yes" ~ 0,
+      TRUE ~ TRUE  # Replace missing with TRUE
+    ))
+  )
+
+# Calculate the mean across the transformed columns
+knowledge$mean <- rowMeans(knowledge, na.rm = TRUE)
+
+# Calculate the median across the transformed columns
+knowledge$median <- apply(knowledge, 1, function(x) median(x, na.rm = TRUE))
+
+# Calculate the score (percentage of 1s across the transformed columns)
+knowledge$score <- rowSums(knowledge, na.rm = TRUE) / ncol(knowledge) * 100
+
+# Apply knowledge_M and knowledge_Level calculation
+knowledge <- knowledge |> 
+  mutate(
+    knowledge_M = median * 100,  # Multiply median by 100 for knowledge_M
+    knowledge_Level = case_when(
+      knowledge_M >= 80 ~ "Good",     
+      knowledge_M >= 50 & knowledge_M <= 79 ~ "Moderate", 
+      knowledge_M <= 49 ~ "Poor",      
+      TRUE ~ "Unknown"               
+    )
+  )
 
 
-
-
-#attitude
+# Modify the 'Attitude' dataframe
 Attitude <- data1 |> 
   select(24:33) |> 
-  mutate(across(everything(), ~case_when(
-    . == "Agree" ~ 0,
-    . == "Neutral" ~ 0,
-    . == "Disagree" ~ 1,
-    TRUE ~ NA_real_
-  ))) |> 
-  mutate(Attitude_M = apply(across(everything()), 1, median, na.rm = TRUE)*100) |>  # Changed here
-  mutate(Attitude_M = paste0(Attitude_M, "%"),
-         Attitude_Level = case_when(
-           Attitude_M >= 80 ~ "Positive",     
-           Attitude_M >= 50 & Attitude_M <80 ~ "Uncertain", 
-           Attitude_M <50 ~ "Negative",      
-           TRUE ~ "Unknown"               
-         ))
-#practice
+  mutate(across(everything(), ~ case_when(
+    . == "Disagree" ~ 0,
+    . == "neutral" ~ 0,
+    . == "Agree" ~ 1,
+    TRUE ~ TRUE  # Replace missing with TRUE
+  )))
+
+Attitude$mean <- rowMeans(Attitude[, 1:10], na.rm = TRUE)  
+Attitude$median <- apply(Attitude[, 1:10], 1, function(x) median(x, na.rm = TRUE))
+Attitude$score <- rowSums(Attitude, na.rm = TRUE) / ncol(knowledge) * 100
+
+Attitude <- Attitude |> 
+  mutate(
+    Attitude_M = median * 100,  
+    Attitude_Level = case_when(
+      Attitude_M >= 80 ~ "Positive",     
+      Attitude_M >= 50 & Attitude_M < 80 ~ "Uncertain", 
+      Attitude_M < 50 ~ "Negative",      
+      TRUE ~ "Unknown"               
+    )
+  )
+
+# Modify the 'Practice' dataframe
 Practice <- data1 |> 
-  select(34:39) |> 
-  mutate(across(everything(), ~case_when(
-    . == "No" ~ 1,
-    . == "Don't Know" ~ 1,
-    . == "Yes" ~ 0,
-    TRUE ~ NA_real_
-  ))) |>  
-  mutate(Practice_M = apply(across(everything()), 1, median, na.rm = TRUE)*100) |>  # Changed here
-  mutate(Practice_M = paste0(Practice_M, "%"),
-         Practice_Level = case_when(
-           Practice_M >=50 ~ "Good",
-           Practice_M < 50 ~ "Misuse",      
-           TRUE ~ "Unknown"               
-         ))
-#table_3
-Parent_cha <- cbind(Practice, Attitude , knowledge)
-Parent_cha |> 
+  select(34:39) |>  
+  mutate(
+    # Apply transformation to columns 34, 37, 38
+    across(
+      .cols = c(1,4,5), 
+      .fns = ~ case_when(
+        . == "Yes" ~ 0,
+        . == "Don't know" ~ 0,
+        . == "No" ~ 1,
+        TRUE ~ TRUE  # Replace missing with TRUE
+      )
+    ),
+    
+    # Apply transformation to columns 35, 36, 39
+    across(
+      .cols = c(2,3,6),
+      .fns = ~ case_when(
+        . == "Yes" ~ 1,         
+        . == "Don't know" ~ 0,
+        . == "No" ~ 0,           
+        TRUE ~ TRUE  # Replace missing with TRUE
+      )
+    )
+  )
+
+# Calculate the mean across the selected columns (34 to 39)
+Practice$mean <- rowMeans(Practice, na.rm = TRUE)
+
+# Calculate the median across the selected columns (34 to 39)
+Practice$median_value <- apply(Practice, 1, function(x) median(x, na.rm = TRUE))
+
+# Calculate the score (percentage of 1s)
+Practice$score <- rowSums(Practice, na.rm = TRUE) / ncol(Practice) * 100
+
+# Apply Practice_M and Practice_Level calculation
+Practice <- Practice |> 
+  mutate(
+    Practice_M = median_value * 100,  # Multiply the median by 100 for Practice_M
+    Practice_Level = case_when(
+      Practice_M >= 80 ~ "Good",     
+      Practice_M < 80 ~ "Missuse",      
+      TRUE ~ "Unknown"               
+    )
+  )
+
+Factor <- cbind(Practice,Attitude,knowledge)
+library(gtsummary)
+library(gt)
+Factor |> 
   select(knowledge_Level, Attitude_Level, Practice_Level) |> 
-  tbl_summary() |> 
-  as_gt()
+  tbl_summary() |>  
+  as_gt() |> 
+  gtsave("Tables/Factors contributing to antibiotic misuse among parents of school-going children in Dhaka City, Bangladesh.docx")
+
+
+
